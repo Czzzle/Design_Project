@@ -108,44 +108,64 @@ send_index = 0
 
 # we add extra byte at the end of raw data to make sure the raw data is not multiple of 512
 if len(raw_data) % 512 == 0:
-    raw_data += b'\x00'
+    raw_data += b'\x00\x00'
 
 raw_data_length = len(raw_data)
 
-chunk_num = 5
+print(raw_data_length)
+
+# chunk_num = 5
+# In the original setting, we send five chunks (5*512 bytes) once we receive 'S' signal from MCU
+# However, this is very fast so the code cannot recieve them quickly and let the coming bytes accumatle in the 
+# REAL BUFFER (btw PC and MCU)
+
+
 exit_while = False
 while not exit_while:
     try:
         # Poll for data with a short timeout
-        ReadInData = dev.read(ep_in, 1, timeout=10) # this function will return a
+        ReadInData = dev.read(ep_in, 512, timeout=10)
+        # this function will return bytes not char
+
+        # observation: 
+        # when the size in dev.read set to be *1*, it read a lot of bytes (which shouldn't be like that) more than  "5" as expected
+        # when the size in dev.read set to be *512*, it will read only once (if the coming data is continueously send('s'), it will read 5 's' )
+
+        # I suspect: (1) the packet sending mechanism (actully send fewer bytes (not 512) per time, but in total 512 )
+        #            (2) how dev.read works
+
+        # The method can temporaily solve this issue, but we need make sure everytime PC can only see '1' S in the buffer
+
         print(chr(ReadInData[0]))
 
         if chr(ReadInData[0]) == 'S':
-            # send 5 chunk everytime it receive an S
-            for i in range(chunk_num):
-                if send_index < (len(raw_data) - PACKET_SIZE):
-                    chunk = raw_data[send_index:send_index+PACKET_SIZE]
-                    # try:
-                    #     dev.write(ep_out, chunk, timeout=100)  # Add a write timeout
-                    #     send_index += PACKET_SIZE
-                    #     print(f"Sent chunk {i+1} at index {send_index}")  # Debugging log
-                    #     break  # Exit retry loop if successful
-                    # except usb.core.USBTimeoutError:
-                    #     print("Write timeout on attempt {attempt+1}, retrying...")
-        
-                    dev.write(ep_out, chunk)
-                    send_index += PACKET_SIZE
-                    print(i)
-                    print(send_index)
-                else:
-                    chunk = raw_data[send_index:] # get the rest of the value 
-                    dev.write(ep_out, chunk)
-                    send_index += PACKET_SIZE
-                    print(send_index)
-                    print('=================== EOF ====================')
-                    exit_while = True
+            # send 1 chunk everytime it receive an S
+           
+            if send_index < (len(raw_data) - PACKET_SIZE):
+                chunk = raw_data[send_index:send_index+PACKET_SIZE]
+                # ------- Code to do try and except for timeout case: ----- 
+                # try:
+                #     dev.write(ep_out, chunk)  # Add a write timeout
+                #     send_index += PACKET_SIZE
+                #     print(f"Sent chunk  at index {send_index}")  # Debugging log
+                #     # break  # Exit retry loop if successful
+                # except usb.core.USBTimeoutError:
+                #     print("Write timeout on attempt {attempt+1}, retrying...")
+    
+                dev.write(ep_out, chunk)
+                send_index += PACKET_SIZE
+                print(send_index)
 
-                    break
+            else:
+                chunk = raw_data[send_index:] # get the rest of the value 
+                dev.write(ep_out, chunk)
+                send_index += len(chunk) 
+                print(send_index)
+                print(raw_data_length)
+                print('=================== EOF ====================')
+                exit_while = True
+
+                break
 
            
             

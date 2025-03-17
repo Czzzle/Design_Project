@@ -75,7 +75,7 @@ ENDPOINT 0x3: Bulk OUT ===============================
 
 
 # ========================== Wav file read ===================
-WAV_FILE = "1.0kHz_500Hz_square.wav"
+WAV_FILE = "200.0kHz_100000Hz_square.wav"
 
 
 with wave.open(WAV_FILE, "rb") as wav:

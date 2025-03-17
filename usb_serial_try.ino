@@ -1,7 +1,7 @@
 #include <SPI.h>
 #include <IntervalTimer.h>
 
-#include "usb_dev.h" 
+#include "usb_dev.h"
 #include "usb_serial.h"
 
 // ============== SPI transmission =========================
@@ -23,7 +23,7 @@ volatile bool toggle = false; // Toggle flag for square wave
 volatile bool receiveSample = false; // initally, no samples will be considered.
 volatile bool timerStart = false; //initially, no timer is working
 
-#define MAX_BUFFER_SIZE 5120
+#define MAX_BUFFER_SIZE 5120 // 5120 is wrokable up to 100kHz
 #define HLAF_MAX_BUFFER_SIZE MAX_BUFFER_SIZE/2
 #define PACKET_SIZE 512
 
@@ -165,11 +165,12 @@ void loop() {
     //we need to fill the first half buffer
     // HWSERIAL.println(nextRead);
     if(nextRead >=HLAF_MAX_BUFFER_SIZE && nextWrite == 0){ 
-      HWSERIAL.println('1');
+      // HWSERIAL.println('1');
       while(nextWrite != HLAF_MAX_BUFFER_SIZE && end_of_file == false){ 
         // ======= step 1: send 'S' to ask for samples from PC ===========
         uint8_t ACK = 'S';
         usb_serial_write(&ACK, 1);
+        // HWSERIAL.println('S');
 
         //========= step 2: wait for coming bytes =======
         // Note: Use serial_avaible to continueouly check the coming data
@@ -194,8 +195,8 @@ void loop() {
           digitalWrite(LED2, LOW); //recive end_of_file signal
           end_of_file = true;
           receiveSample = false;
-          HWSERIAL.println("xxx");
-          HWSERIAL.println(coming_size);
+          // HWSERIAL.println("xxx");
+          // HWSERIAL.println(coming_size);
           break;
         }
 
@@ -205,23 +206,23 @@ void loop() {
         //   digitalWrite(LED_YELLOW, LOW);
         // }
 
-        HWSERIAL.println("nextWrite");
-        HWSERIAL.println(nextWrite);
+        // HWSERIAL.println("nextWrite");
+        // HWSERIAL.println(nextWrite);
       } //end while, mwans we fill up the first half of buffer
 
-      HWSERIAL.println("nextWrite");
-      HWSERIAL.println(nextWrite);
+      // HWSERIAL.println("nextWrite");
+      // HWSERIAL.println(nextWrite);
 
     } //end case: (nextRead >=HLAF_MAX_BUFFER_SIZE && nextWrite == 0)
 
     //fill the second half of buffer
     else if(nextRead < HLAF_MAX_BUFFER_SIZE && nextWrite == HLAF_MAX_BUFFER_SIZE){
-      HWSERIAL.println('2');
+      // HWSERIAL.println('2');
       while(nextWrite != 0 && end_of_file == false){ 
         // ======= step 1: send 'S' to ask for samples from PC ===========
         uint8_t ACK = 'S';
         usb_serial_write(&ACK, 1);
-        HWSERIAL.println('S');
+        // HWSERIAL.println('S');
         //========= step 2: wait for coming bytes =======
         // Note: Use serial_avaible to continueouly check the coming data
         while(usb_serial_available() == 0){
@@ -258,10 +259,10 @@ void loop() {
 
       } //end while, means we fill up the second half of buffer
 
-      HWSERIAL.println("nextWrite");
-      HWSERIAL.println(nextWrite);
-      HWSERIAL.println("nextRead");
-      HWSERIAL.println(nextRead);
+      // HWSERIAL.println("nextWrite");
+      // HWSERIAL.println(nextWrite);
+      // HWSERIAL.println("nextRead");
+      // HWSERIAL.println(nextRead);
 
     } //end case: (nextRead < HLAF_MAX_BUFFER_SIZE && nextWrite == HLAF_MAX_BUFFER_SIZE)
   }

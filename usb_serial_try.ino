@@ -23,7 +23,7 @@ volatile bool toggle = false; // Toggle flag for square wave
 volatile bool receiveSample = false; // initally, no samples will be considered.
 volatile bool timerStart = false; //initially, no timer is working
 
-#define MAX_BUFFER_SIZE 5120 // 5120 is wrokable up to 100kHz
+#define MAX_BUFFER_SIZE 409600
 #define HLAF_MAX_BUFFER_SIZE MAX_BUFFER_SIZE/2
 #define PACKET_SIZE 512
 
@@ -34,6 +34,9 @@ volatile int buffer_size = 0;
 
 volatile bool needToFill = false;
 volatile bool end_of_file = false;
+
+volatile int totalRead = 0;
+volatile int totalWrite = 0;
 
 int coming_size; // coming size from PC, initilze here
 
@@ -122,7 +125,7 @@ void loop() {
       //========= step 2: wait for coming bytes =======
       // Note: Use serial_avaible to continueouly check the coming data
       while(usb_serial_available() == 0){
-        delay(0.2);
+        // delay(0.2);
         continue;
         //do nothing just wait for coming bytes
       }
@@ -136,12 +139,14 @@ void loop() {
         // nextWrite += count;
         nextWrite = (nextWrite + count) % MAX_BUFFER_SIZE;
         buffer_size += count;
+        totalWrite += count;
 
       }else if(coming_size > 0){ // tail data, and stop reciving data
         int count = usb_serial_read(&byte_buffer[nextWrite], coming_size);
         // nextWrite += count;
         nextWrite = (nextWrite + count) % MAX_BUFFER_SIZE;
         buffer_size += count;
+        totalWrite += count;
         digitalWrite(LED2, LOW); //recive end_of_file signal
         end_of_file = true;
         receiveSample = false;
@@ -170,12 +175,11 @@ void loop() {
         // ======= step 1: send 'S' to ask for samples from PC ===========
         uint8_t ACK = 'S';
         usb_serial_write(&ACK, 1);
-        // HWSERIAL.println('S');
 
         //========= step 2: wait for coming bytes =======
         // Note: Use serial_avaible to continueouly check the coming data
         while(usb_serial_available() == 0){
-          delay(0.2);
+          // delay(0.2);
           //do nothing just wait for coming bytes
         }
         
@@ -186,12 +190,14 @@ void loop() {
           int count = usb_serial_read(&byte_buffer[nextWrite], coming_size);
           nextWrite = (nextWrite + count) % MAX_BUFFER_SIZE; 
           buffer_size += count;
+          totalWrite += count;
 
         }
         else if(coming_size > 0){
           int count = usb_serial_read(&byte_buffer[nextWrite], coming_size);
           nextWrite = (nextWrite + count) % MAX_BUFFER_SIZE;
           buffer_size += count;
+          totalWrite += count;
           digitalWrite(LED2, LOW); //recive end_of_file signal
           end_of_file = true;
           receiveSample = false;
@@ -239,11 +245,14 @@ void loop() {
           int count = usb_serial_read(&byte_buffer[nextWrite], coming_size);
           nextWrite = (nextWrite + count) % MAX_BUFFER_SIZE;
           buffer_size += count;
+          totalWrite += count;
 
         }else if(coming_size > 0 ){ //reach end_of_file
           int count = usb_serial_read(&byte_buffer[nextWrite], coming_size);
           nextWrite = (nextWrite + count) % MAX_BUFFER_SIZE;
           buffer_size += count;
+          totalWrite += count;
+
           digitalWrite(LED2, LOW); //recive end_of_file signal
           end_of_file = true;
           receiveSample = false;
@@ -273,6 +282,16 @@ void loop() {
       timer.end();
       digitalWrite(LED, LOW); //indicate stop timer
 
+      HWSERIAL.println("Finish DAC (output): ");
+      HWSERIAL.println(totalRead);
+
+      totalRead = 0; //reset totalRead
+
+      HWSERIAL.println("Finish DAC (input): ");
+      HWSERIAL.println(totalWrite);
+
+      totalWrite = 0; //reset totalRead
+
       // **** reset all flags *****
       timerStart = false;
       receiveSample = false;
@@ -292,11 +311,15 @@ void timerCallback() {
     // timerStart = false;
     toggle = !toggle;
     digitalWrite(LED_YELLOW, HIGH);
+
+    HWSERIAL.println("Finish DAC: ");
+    HWSERIAL.println(totalRead);
   }
   else{
     uint16_t value = *(uint16_t*)&byte_buffer[nextRead];
 
     nextRead = (nextRead+2) % MAX_BUFFER_SIZE;
+    totalRead += 2;
     buffer_size = buffer_size -2;
     
     // Transmit SPI data
@@ -314,7 +337,4 @@ void timerCallback() {
   }
   
 }
-
-
-
 

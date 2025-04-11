@@ -1,5 +1,9 @@
 '''
 This file uses pyusb to do USB Bulk Transfer for ADC only
+1. I updated all datatype to uint16, please use uint16 to visuliztaion and int16 to output to student
+2. Observed wave-like output on the bottom and cut-off on the top.
+3. Read buffer cannot be cleared successfully, can see the old data being written to read data station.
+
 '''
 import usb.core
 import usb.util
@@ -83,7 +87,8 @@ with wave.open(output_filename, 'wb') as output_file:
     output_file.setframerate(frame_rate)
 
     i = 0
-    recorded_samples = np.array([], dtype=np.int16)
+    # recorded_samples = np.array([], dtype=np.int16)
+    recorded_samples = np.array([], dtype=np.uint16) # test to work on uint16 since ADC output is use 0 as base
 
 
     exit_while = False
@@ -109,13 +114,13 @@ with wave.open(output_filename, 'wb') as output_file:
     
     dev.write(ep_out, 'e') # send a signal to ADC so it will stop timer and reset itself
     
-    output_file.writeframes(np.array(recorded_samples, dtype=np.int16).tobytes())
+    output_file.writeframes(np.array(recorded_samples, dtype=np.uint16).tobytes()) 
     print("ADC recording completed. Saved as output.wav.")
 
 # clean all buffer
 try:
     ReadInData = dev.read(ep_in, HLAF_MAX_BUFFER_SIZE, timeout=10)
+    ReadInData = dev.read(ep_in, HLAF_MAX_BUFFER_SIZE, timeout=10)
 except:
     print("no data in buffer")
 print("EOF")
-

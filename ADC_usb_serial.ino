@@ -30,7 +30,7 @@ IntervalTimer timer; // Teensy-specific high-precision timer
 volatile bool sendSample = false; // initally, no samples will be sent to PC.
 volatile bool timerStart = false; //initially, no timer is working
 
-#define MAX_BUFFER_SIZE 409600 //409600
+#define MAX_BUFFER_SIZE 5120 //409600
 #define HLAF_MAX_BUFFER_SIZE MAX_BUFFER_SIZE/2
 #define PACKET_SIZE 512
 
@@ -126,6 +126,7 @@ void loop() {
       sendSample = true;
       HWSERIAL.println("sendSample = true");
     }
+    
   }else if(sendSample == true && timerStart == true){
     // we need to send data one by one
     if(nextSend == 0 && nextPut >= HLAF_MAX_BUFFER_SIZE){
@@ -146,7 +147,8 @@ void loop() {
           nextPut = 0; //the index of the next ADC value
           nextSend = 0; // the index of the next bunch of data MCU will send to PC
           buffer_size = 0;
-          
+
+          break;
         }
         usb_serial_write(byte_buffer+nextSend, 512);
         HWSERIAL.println("write 512 in first half of buffer");
@@ -172,6 +174,8 @@ void loop() {
           nextPut = 0; //the index of the next ADC value
           nextSend = 0; // the index of the next bunch of data MCU will send to PC
           buffer_size = 0;
+
+          break;
           
         }
 

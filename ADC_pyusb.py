@@ -1,9 +1,5 @@
 '''
-This file uses pyusb to do USB Bulk Transfer for ADC only
-1. I updated all datatype to uint16, please use uint16 to visuliztaion and int16 to output to student
-2. Observed wave-like output on the bottom and cut-off on the top.
-3. Read buffer cannot be cleared successfully, can see the old data being written to read data station.
-
+Have 4 readData function to ensure no trash data inside the buffer
 '''
 import usb.core
 import usb.util
@@ -60,8 +56,22 @@ for ep in intf:
 
 print(dev.speed)
 
+MAX_BUFFER_SIZE = 409600
+HLAF_MAX_BUFFER_SIZE = MAX_BUFFER_SIZE//2
+PACKET_SIZE = 512
+
+# Step 0: read all dummy data may exist in the input buffer
+try:
+    ReadInData = dev.read(ep_in, HLAF_MAX_BUFFER_SIZE, timeout=10)
+    ReadInData = dev.read(ep_in, HLAF_MAX_BUFFER_SIZE, timeout=10)
+    print("dummy data is in buffer")
+except:
+    print("no dummy data is in buffer")
+
+##### This step 0 is to confirm is the wrong data coming from python or MCU
+
 # Step 1: send sampling rate
-frame_rate = 90000
+frame_rate = 80000
 bytes_rate = frame_rate.to_bytes(4, byteorder='little')
 dev.write(ep_out, bytes_rate)
 
@@ -75,9 +85,6 @@ print(chr(getSR_ACK[0]))
 # 1. send SR to DAC and send half of samples to MCU(DAC)
 # 2. send SR to ADC and receive ACK from MCU(ADC), ADC starts working
 # 3. send signal to DAC to start transmit
-
-MAX_BUFFER_SIZE = 409600
-HLAF_MAX_BUFFER_SIZE = MAX_BUFFER_SIZE//2
 
 
 output_filename = "output.wav"
@@ -93,19 +100,20 @@ with wave.open(output_filename, 'wb') as output_file:
 
     exit_while = False
     num = 0
-    while num <= 10000:
+    while num <= 500000:
         try:
             # Poll for data with a short timeout
             ReadInData = dev.read(ep_in, HLAF_MAX_BUFFER_SIZE, timeout=10)
             # print(ReadInData)
             np_data = np.frombuffer(ReadInData, dtype='>u2') # > large-endian, u2: unint16
-            # num_samples = len(ReadInData) // 2  #ensure integer 
+            num_samples = len(ReadInData)   #sometime it will read 512, sometime it will read 1024 bytes
+            print(num_samples)
             # ReadInSample = struct.unpack('<' + 'h' * num_samples, ReadInData)
             # print(np_data)
             recorded_samples = np.concatenate((recorded_samples, np_data))
 
             num =len(recorded_samples)
-            print(num)
+            # print(num)
             # print("YEAHHHHHH")
         except:
             print("no data avaiable")

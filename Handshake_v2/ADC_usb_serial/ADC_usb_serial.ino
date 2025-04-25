@@ -31,11 +31,14 @@ IntervalTimer timer; // Teensy-specific high-precision timer
 volatile bool sendSample = false; // initally, no samples will be sent to PC.
 volatile bool timerStart = false; //initially, no timer is working
 
-#define MAX_BUFFER_SIZE  81920 //for 180K SR//40960 for 108K SR
-#define HLAF_MAX_BUFFER_SIZE MAX_BUFFER_SIZE/2
+volatile int MAX_BUFFER_SIZE = 1024;
+volatile int HALF_MAX_BUFFER_SIZE = 512;
+#define SUPER_MAX_BUFFER_SIZE  81920 //for 180K SR//40960 for 108K SR
+#define SUPER_HALF_MAX_BUFFER_SIZE SUPER_MAX_BUFFER_SIZE/2
 #define PACKET_SIZE 512
 
-uint8_t byte_buffer[MAX_BUFFER_SIZE]; //byte buffer 
+
+uint8_t byte_buffer[SUPER_MAX_BUFFER_SIZE]; //byte buffer 
 volatile int nextPut = 0; //the index of the next ADC value
 volatile int nextSend = 0; // the index of the next bunch of data MCU will send to PC
 volatile int buffer_size = 0;
@@ -104,6 +107,37 @@ void loop() {
       HWSERIAL.println("SR:");
       HWSERIAL.println(sampleRate);
 
+      // if (samplingRate > 0 && samplingRate <= 10000){
+      //   MAX_BUFFER_SIZE = 1024;
+      // }
+      // else if (samplingRate > 10000 && samplingRate <= 30000){
+      //   MAX_BUFFER_SIZE = 2048;
+      // }
+      // else if (samplingRate > 30000 && samplingRate <= 50000){
+      //   MAX_BUFFER_SIZE = 4096;
+      // }
+      // else if (samplingRate > 60000 && samplingRate <= 80000){
+      //   MAX_BUFFER_SIZE = 8192;
+      // }
+      // else {
+      //   MAX_BUFFER_SIZE = SUPER_MAX_BUFFER_SIZE;
+      // }
+      if (samplingRate >= 100000){
+        MAX_BUFFER_SIZE = SUPER_MAX_BUFFER_SIZE;
+      }
+      else if (samplingRate >= 50000){
+        MAX_BUFFER_SIZE = 40960;
+      }
+      else if (samplingRate >= 20000){
+        MAX_BUFFER_SIZE = 4096;
+      }
+      else{
+        MAX_BUFFER_SIZE = 1024;
+      }
+      // MAX_BUFFER_SIZE = SUPER_MAX_BUFFER_SIZE;
+
+      HALF_MAX_BUFFER_SIZE = MAX_BUFFER_SIZE/2;
+
       uint8_t ACK = '1'; //notify Python it is ready
       usb_serial_write(&ACK, 1); 
       HWSERIAL.println("Send ACK");
@@ -123,7 +157,7 @@ void loop() {
   }
   else if (sendSample == false && timerStart == true){
     // in this stage we need to wait until half of buffer to be full
-    if(buffer_size >= HLAF_MAX_BUFFER_SIZE){
+    if(buffer_size >= HALF_MAX_BUFFER_SIZE){
       sendSample = true;
       HWSERIAL.println("sendSample = true");
     }
@@ -159,8 +193,8 @@ void loop() {
 
   }else if(sendSample == true && timerStart == true){
     // we need to send data one by one
-    if(nextSend == 0 && nextPut >= HLAF_MAX_BUFFER_SIZE){
-      while(nextSend != HLAF_MAX_BUFFER_SIZE){
+    if(nextSend == 0 && nextPut >= HALF_MAX_BUFFER_SIZE){
+      while(nextSend != HALF_MAX_BUFFER_SIZE){
         if (usb_serial_available() > 0){
           char dummy_signal;
           usb_serial_read(&dummy_signal, usb_serial_available());
@@ -185,7 +219,7 @@ void loop() {
         nextSend += 512;
       }
       
-    }else if(nextSend == HLAF_MAX_BUFFER_SIZE && nextPut < HLAF_MAX_BUFFER_SIZE){
+    }else if(nextSend == HALF_MAX_BUFFER_SIZE && nextPut < HALF_MAX_BUFFER_SIZE){
       while( nextSend != 0){
 
         if (usb_serial_available() > 0){

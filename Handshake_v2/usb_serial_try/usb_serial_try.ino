@@ -97,11 +97,7 @@ void loop() {
       digitalWrite(LED, HIGH); //inidicate it has sampling rate 
       HWSERIAL.println("SR:");
       HWSERIAL.println(sampleRate);
-      
-      // if (samplingRate == 44000.0){
-      //    digitalWrite(LED2, LOW);
-      // }
-
+    
       //clean buffer on MCU side
       nextRead = 0; 
       nextWrite = 0;
@@ -206,19 +202,10 @@ void loop() {
           break;
         }
 
-        // if (usb_serial_available() == 0){
-        //   digitalWrite(LED_YELLOW, HIGH);
-        // }else{
-        //   digitalWrite(LED_YELLOW, LOW);
-        // }
+  
+      } //end while, means we fill up the first half of buffer
 
-        // HWSERIAL.println("nextWrite");
-        // HWSERIAL.println(nextWrite);
-      } //end while, mwans we fill up the first half of buffer
-
-      // HWSERIAL.println("nextWrite");
-      // HWSERIAL.println(nextWrite);
-
+   
     } //end case: (nextRead >=HLAF_MAX_BUFFER_SIZE && nextWrite == 0)
 
     //fill the second half of buffer
@@ -259,19 +246,8 @@ void loop() {
           break;
         }
 
-        // if (usb_serial_available() == 0){
-        //   digitalWrite(LED_YELLOW, HIGH);
-        // }else{
-        //   digitalWrite(LED_YELLOW, LOW);
-        // }
-        
 
       } //end while, means we fill up the second half of buffer
-
-      // HWSERIAL.println("nextWrite");
-      // HWSERIAL.println(nextWrite);
-      // HWSERIAL.println("nextRead");
-      // HWSERIAL.println(nextRead);
 
     } //end case: (nextRead < HLAF_MAX_BUFFER_SIZE && nextWrite == HLAF_MAX_BUFFER_SIZE)
   }
@@ -301,8 +277,6 @@ void loop() {
       end_of_file = false;
     }
     
-
- 
   }
   
 }

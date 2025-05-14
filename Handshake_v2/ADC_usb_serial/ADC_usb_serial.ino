@@ -31,12 +31,12 @@ IntervalTimer timer; // Teensy-specific high-precision timer
 volatile bool sendSample = false; // initally, no samples will be sent to PC.
 volatile bool timerStart = false; //initially, no timer is working
 
-volatile int MAX_BUFFER_SIZE = 1024;
-volatile int HALF_MAX_BUFFER_SIZE = 512;
-#define SUPER_MAX_BUFFER_SIZE  81920 //for 180K SR//40960 for 108K SR
+#define SUPER_MAX_BUFFER_SIZE  81920 //the max buffer size for ADC
 #define SUPER_HALF_MAX_BUFFER_SIZE SUPER_MAX_BUFFER_SIZE/2
 #define PACKET_SIZE 512
 
+volatile int MAX_BUFFER_SIZE = 1024; // actual size the receiver will use in this round
+volatile int HALF_MAX_BUFFER_SIZE = 512;
 
 uint8_t byte_buffer[SUPER_MAX_BUFFER_SIZE]; //byte buffer 
 volatile int nextPut = 0; //the index of the next ADC value
@@ -90,8 +90,8 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
   if (sendSample == false && timerStart == false){
+    // to revieve sampling rate from PC
     if (usb_serial_available() == 4){
       uint8_t byte1, byte2, byte3, byte4;
       usb_serial_read(&byte1, 1);
@@ -100,6 +100,8 @@ void loop() {
       usb_serial_read(&byte4, 1);
 
       uint32_t sampleRate = (uint32_t) byte1 | (uint32_t) byte2 <<8 | (uint32_t) byte3 <<16 | (uint32_t) byte4 <<24;
+
+      // setup timer based on sampling rate
       samplingRate = (float)sampleRate;
       periodMicros = 1e6/samplingRate;
 
@@ -107,22 +109,8 @@ void loop() {
       HWSERIAL.println("SR:");
       HWSERIAL.println(sampleRate);
 
-      // if (samplingRate > 0 && samplingRate <= 10000){
-      //   MAX_BUFFER_SIZE = 1024;
-      // }
-      // else if (samplingRate > 10000 && samplingRate <= 30000){
-      //   MAX_BUFFER_SIZE = 2048;
-      // }
-      // else if (samplingRate > 30000 && samplingRate <= 50000){
-      //   MAX_BUFFER_SIZE = 4096;
-      // }
-      // else if (samplingRate > 60000 && samplingRate <= 80000){
-      //   MAX_BUFFER_SIZE = 8192;
-      // }
-      // else {
-      //   MAX_BUFFER_SIZE = SUPER_MAX_BUFFER_SIZE;
-      // }
-      if (samplingRate >= 100000){
+      // customize actual buffer size based on sampling rate
+      if (samplingRate >= 100000){ // large sampling rate be the first if statement for quick setting
         MAX_BUFFER_SIZE = SUPER_MAX_BUFFER_SIZE;
       }
       else if (samplingRate >= 50000){
@@ -164,7 +152,7 @@ void loop() {
 
     // if the input wav file is very very short (smaller than half buffer)
     // we will only send that amount of data
-    // THIS NEED ENTIRE HANDSHAKE TO DO TESTING
+    // to receive "STOP" signal from PC
     if (usb_serial_available() > 0){
       char dummy_signal;
       usb_serial_read(&dummy_signal, usb_serial_available());
@@ -192,9 +180,10 @@ void loop() {
     }
 
   }else if(sendSample == true && timerStart == true){
-    // we need to send data one by one
+    // we need to send data 512 bytes each time
     if(nextSend == 0 && nextPut >= HALF_MAX_BUFFER_SIZE){
       while(nextSend != HALF_MAX_BUFFER_SIZE){
+        // to receive "STOP" signal from PC
         if (usb_serial_available() > 0){
           char dummy_signal;
           usb_serial_read(&dummy_signal, usb_serial_available());
@@ -221,7 +210,7 @@ void loop() {
       
     }else if(nextSend == HALF_MAX_BUFFER_SIZE && nextPut < HALF_MAX_BUFFER_SIZE){
       while( nextSend != 0){
-
+        // to receive "STOP" signal from PC
         if (usb_serial_available() > 0){
           char dummy_signal;
           usb_serial_read(&dummy_signal, usb_serial_available());
